@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-jiwoo_bot}
+      POSTGRES_USER: ${DB_USER:-jiwoo}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-jiwoo} -d ${DB_NAME:-jiwoo_bot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_HOST=postgres
+    restart: unless-stopped
+    volumes:
+      # Mount source code for development (hot reload)
+      - .:/app
+      - /app/node_modules
+    profiles:
+      - prod
+
+  # Development-specific service with hot reload
+  bot-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-jiwoo_bot}
+      - DB_USER=${DB_USER:-jiwoo}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      - GUILD_ID=${GUILD_ID}
+      - BOT_CHAT_CHANNEL_ID=${BOT_CHAT_CHANNEL_ID}
+      - INFO_MABAR_CHANNEL_ID=${INFO_MABAR_CHANNEL_ID}
+      - ADMIN_ROLE_ID=${ADMIN_ROLE_ID}
+      - ACTIVE_CTF_CATEGORY_ID=${ACTIVE_CTF_CATEGORY_ID}
+      - ARCHIVE_CATEGORY_ID=${ARCHIVE_CATEGORY_ID}
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: node --watch index.js
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
