@@ -215,10 +215,5 @@ Development mode menggunakan `node --watch` untuk auto-reload saat code changes.
 - Event harus di-set ke status "COMPLETED" di Discord
 - Check logs: `docker-compose logs -f bot`
 
-## License
-
-ISC
-
-## Support
-
-Untuk issues atau questions, contact admin server.
+## Credit
+@chjwoo
