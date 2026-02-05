@@ -20,6 +20,10 @@ export default {
                 .setDescription('CTF event name (e.g., PascalCTF 2026)')
                 .setRequired(true))
         .addStringOption(option =>
+            option.setName('description')
+                .setDescription('Event description')
+                .setRequired(false))
+        .addStringOption(option =>
             option.setName('start_date')
                 .setDescription('Start date/time in format DD/MM/YYYY HH:MM (WIB timezone)')
                 .setRequired(true))
@@ -66,6 +70,7 @@ export default {
         try {
             // Get command options
             const name = interaction.options.getString('name');
+            const description = interaction.options.getString('description');
             const startDateStr = interaction.options.getString('start_date');
             const endDateStr = interaction.options.getString('end_date');
             const url = interaction.options.getString('url');
@@ -138,7 +143,7 @@ export default {
             console.log(`[CTF] Created forum channel: ${forumChannel.name} (${forumChannel.id})`);
 
             // Create Discord scheduled event (password excluded from description)
-            const eventDescription = buildEventDescription(url, teamName, inviteLink);
+            const eventDescription = buildEventDescription(url, teamName, inviteLink, description);
 
             const scheduledEvent = await interaction.guild.scheduledEvents.create({
                 name: name,
@@ -170,7 +175,7 @@ export default {
             // Post welcome message in forum channel
             const welcomeEmbed = new EmbedBuilder()
                 .setTitle(`🚩 Welcome to ${name}!`)
-                .setDescription(`This forum is dedicated to the **${name}** CTF event.\n\nUse this space to collaborate, share writeups, and discuss challenges!\n\n**📜 Rules:**\n❌ Do not cheat\n❌ Do not share flags`)
+                .setDescription(`${description ? description + '\n\n' : ''}This forum is dedicated to the **${name}** CTF event.\n\nUse this space to collaborate, share writeups, and discuss challenges!\n\n**📜 Rules:**\n❌ Do not cheat\n❌ Do not share flags`)
                 .setColor(0xFF6B6B)
                 .addFields(
                     { name: '📅 Event Period', value: formatDateRange(startDate, endDate), inline: false }
@@ -207,7 +212,7 @@ export default {
             // Create announcement embed
             const embed = new EmbedBuilder()
                 .setTitle(`🚩 ${name}`)
-                .setDescription(formatDateRange(startDate, endDate))
+                .setDescription(`${description ? description + '\n\n' : ''}${formatDateRange(startDate, endDate)}`)
                 .setColor(0xFF6B6B)
                 .setTimestamp();
 
@@ -308,8 +313,8 @@ function formatDateRange(startDate, endDate) {
 /**
  * Build event description with team details (password excluded - only in forum)
  */
-function buildEventDescription(url, teamName, inviteLink) {
-    let description = '';
+function buildEventDescription(url, teamName, inviteLink, customDescription) {
+    let description = customDescription ? customDescription + '\n\n' : '';
 
     if (url) {
         description += `🔗 Official URL: ${url}\n\n`;
