@@ -19,10 +19,7 @@ export default {
             option.setName('name')
                 .setDescription('CTF event name (e.g., PascalCTF 2026)')
                 .setRequired(true))
-        .addStringOption(option =>
-            option.setName('description')
-                .setDescription('Event description')
-                .setRequired(false))
+
         .addStringOption(option =>
             option.setName('start_date')
                 .setDescription('Start date/time in format DD/MM/YYYY HH:MM (WIB timezone)')
@@ -31,6 +28,10 @@ export default {
             option.setName('end_date')
                 .setDescription('End date/time in format DD/MM/YYYY HH:MM (WIB timezone)')
                 .setRequired(true))
+        .addStringOption(option =>
+            option.setName('description')
+                .setDescription('Event description')
+                .setRequired(false))
         .addStringOption(option =>
             option.setName('url')
                 .setDescription('Official CTF URL')

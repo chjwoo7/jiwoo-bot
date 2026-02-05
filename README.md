@@ -82,6 +82,7 @@ Bot memerlukan permissions berikut:
 ```
 /ctf-event 
   name: PascalCTF 2026
+  description: CTF ini max 4 orang
   start_date: 05/02/2026 15:00
   end_date: 06/02/2026 15:00
   url: https://ctf.pascalctf.it/
