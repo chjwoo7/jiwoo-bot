@@ -8,6 +8,7 @@ dotenv.config();
 // Support multiple admin roles
 const ADMIN_ROLE_IDS = ['1402615202112995418', '1405007847162642452'];
 const BOT_CHAT_CHANNEL_ID = process.env.BOT_CHAT_CHANNEL_ID || '1458725882410565815';
+const INFO_MABAR_CHANNEL_ID = process.env.INFO_MABAR_CHANNEL_ID;
 const ACTIVE_CTF_CATEGORY_ID = process.env.ACTIVE_CTF_CATEGORY_ID;
 
 export default {
@@ -44,7 +45,7 @@ export default {
                 .setRequired(false))
         .addChannelOption(option =>
             option.setName('channel')
-                .setDescription('Channel to post announcement (defaults to bot-chat)')
+                .setDescription('Channel to post announcement (defaults to info-mabar)')
                 .setRequired(false)),
 
     async execute(interaction) {
@@ -228,8 +229,8 @@ export default {
                 { name: '🎭 Role', value: `<@&${role.id}> - Click "Interested" on the event to get access!`, inline: false }
             );
 
-            // Post announcement to specified channel or default
-            const targetChannel = channel || interaction.guild.channels.cache.get(BOT_CHAT_CHANNEL_ID);
+            // Post announcement to specified channel or default (Info Mabar)
+            const targetChannel = channel || interaction.guild.channels.cache.get(INFO_MABAR_CHANNEL_ID) || interaction.guild.channels.cache.get(BOT_CHAT_CHANNEL_ID);
 
             if (!targetChannel) {
                 return await interaction.editReply({
