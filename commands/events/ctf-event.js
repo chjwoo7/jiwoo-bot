@@ -54,6 +54,10 @@ export default {
                 .setRequired(false)),
 
     async execute(interaction) {
+        let createdRole = null;
+        let createdForumChannel = null;
+        let createdScheduledEvent = null;
+
         // Check if user has any of the admin roles
         const hasAdminRole = ADMIN_ROLE_IDS.some(roleId =>
             interaction.member.roles.cache.has(roleId)
@@ -79,6 +83,7 @@ export default {
             const teamPassword = interaction.options.getString('team_password');
             const inviteLink = interaction.options.getString('invite_link');
             const channel = interaction.options.getChannel('channel');
+            const targetChannel = channel || interaction.guild.channels.cache.get(INFO_MABAR_CHANNEL_ID) || interaction.guild.channels.cache.get(BOT_CHAT_CHANNEL_ID);
 
             // Parse dates (DD/MM/YYYY HH:MM format, WIB timezone)
             const startDate = parseWIBDate(startDateStr);
@@ -104,6 +109,24 @@ export default {
                 });
             }
 
+            if (!targetChannel) {
+                return await interaction.editReply({
+                    content: '❌ Could not find the target channel to post announcement.'
+                });
+            }
+
+            // Discord does not allow scheduling start time in the past.
+            // If CTF is already running, schedule event to start 1 minute from now.
+            const scheduledStartTime = startDate < now
+                ? new Date(now.getTime() + 60 * 1000)
+                : startDate;
+
+            if (scheduledStartTime >= endDate) {
+                return await interaction.editReply({
+                    content: '❌ Waktu event terlalu mepet. Pastikan end_date lebih jauh dari waktu sekarang.'
+                });
+            }
+
             // Generate slug for role and channel names
             const eventSlug = slugify(name);
 
@@ -114,6 +137,7 @@ export default {
                 reason: `CTF Event: ${name}`,
                 mentionable: true
             });
+            createdRole = role;
 
             console.log(`[CTF] Created role: ${role.name} (${role.id})`);
 
@@ -140,6 +164,7 @@ export default {
                     }
                 ]
             });
+            createdForumChannel = forumChannel;
 
             console.log(`[CTF] Created forum channel: ${forumChannel.name} (${forumChannel.id})`);
 
@@ -148,7 +173,7 @@ export default {
 
             const scheduledEvent = await interaction.guild.scheduledEvents.create({
                 name: name,
-                scheduledStartTime: startDate,
+                scheduledStartTime: scheduledStartTime,
                 scheduledEndTime: endDate,
                 privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
                 entityType: GuildScheduledEventEntityType.External,
@@ -157,6 +182,7 @@ export default {
                 },
                 description: eventDescription
             });
+            createdScheduledEvent = scheduledEvent;
 
             console.log(`[CTF] Created scheduled event: ${scheduledEvent.name} (${scheduledEvent.id})`);
 
@@ -242,15 +268,6 @@ export default {
                     .setStyle(ButtonStyle.Success)
             );
 
-            // Post announcement to specified channel or default (Info Mabar)
-            const targetChannel = channel || interaction.guild.channels.cache.get(INFO_MABAR_CHANNEL_ID) || interaction.guild.channels.cache.get(BOT_CHAT_CHANNEL_ID);
-
-            if (!targetChannel) {
-                return await interaction.editReply({
-                    content: '❌ Could not find the target channel to post announcement.'
-                });
-            }
-
             await targetChannel.send({
                 embeds: [embed],
                 components: [joinButtonRow]
@@ -263,6 +280,34 @@ export default {
 
         } catch (error) {
             console.error('[CTF] Error creating CTF event:', error);
+
+            // Roll back partially created resources to avoid duplicates on retry
+            if (createdScheduledEvent) {
+                try {
+                    await createdScheduledEvent.delete();
+                    console.log('[CTF] Rolled back scheduled event');
+                } catch (cleanupError) {
+                    console.error('[CTF] Failed to rollback scheduled event:', cleanupError.message);
+                }
+            }
+
+            if (createdForumChannel) {
+                try {
+                    await createdForumChannel.delete('Rollback: CTF event creation failed');
+                    console.log('[CTF] Rolled back forum channel');
+                } catch (cleanupError) {
+                    console.error('[CTF] Failed to rollback forum channel:', cleanupError.message);
+                }
+            }
+
+            if (createdRole) {
+                try {
+                    await createdRole.delete('Rollback: CTF event creation failed');
+                    console.log('[CTF] Rolled back role');
+                } catch (cleanupError) {
+                    console.error('[CTF] Failed to rollback role:', cleanupError.message);
+                }
+            }
 
             let errorMessage = '❌ Failed to create CTF event.';
 
