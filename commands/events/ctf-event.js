@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, MessageFlags, ChannelType, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, GuildScheduledEventEntityType, GuildScheduledEventPrivacyLevel, MessageFlags, ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import dotenv from 'dotenv';
 import { slugify } from '../../utils/slugify.js';
 import { createEvent } from '../../utils/eventManager.js';
@@ -96,9 +96,9 @@ export default {
                 });
             }
 
-            // Check if start date is in the past
+            // Reject only if the CTF has already ended
             const now = new Date();
-            if (startDate < now) {
+            if (endDate < now) {
                 return await interaction.editReply({
                     content: '❌ Woy CTF nya udah lewat bjir, apa lu salah tanggal?\nPakai tanggal yang bener dong! 📅'
                 });
@@ -232,7 +232,14 @@ export default {
             embed.addFields(
                 { name: '📅 Event', value: `[View Event](${scheduledEvent.url})`, inline: false },
                 { name: '💬 Forum', value: `<#${forumChannel.id}>`, inline: false },
-                { name: '🎭 Role', value: `<@&${role.id}> - Click "Interested" on the event to get access!`, inline: false }
+                { name: '🎭 Role', value: `<@&${role.id}> - Click "Interested" atau tombol "Join CTF" di bawah untuk dapat akses!`, inline: false }
+            );
+
+            const joinButtonRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`join_ctf:${scheduledEvent.id}:${role.id}`)
+                    .setLabel('Join CTF')
+                    .setStyle(ButtonStyle.Success)
             );
 
             // Post announcement to specified channel or default (Info Mabar)
@@ -244,7 +251,10 @@ export default {
                 });
             }
 
-            await targetChannel.send({ embeds: [embed] });
+            await targetChannel.send({
+                embeds: [embed],
+                components: [joinButtonRow]
+            });
 
             // Success response
             await interaction.editReply({

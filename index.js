@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { Client, Collection, Events, GatewayIntentBits, EmbedBuilder, GuildScheduledEventStatus, Partials } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, EmbedBuilder, GuildScheduledEventStatus, MessageFlags, Partials } from 'discord.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,6 +84,75 @@ client.once(Events.ClientReady, async (readyClient) => {
 
 // Handle slash command interactions
 client.on(Events.InteractionCreate, async interaction => {
+    if (interaction.isButton()) {
+        if (!interaction.customId.startsWith('join_ctf:')) return;
+
+        const [, eventId, roleId] = interaction.customId.split(':');
+
+        if (!eventId || !roleId) {
+            return await interaction.reply({
+                content: '❌ Tombol Join CTF tidak valid.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        if (!interaction.guild || !interaction.member) {
+            return await interaction.reply({
+                content: '❌ Tombol ini hanya bisa dipakai di server.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        try {
+            const event = await getEventByDiscordId(eventId);
+
+            if (!event || !event.is_active) {
+                return await interaction.reply({
+                    content: '❌ Event CTF ini sudah tidak aktif.',
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            if (event.role_id !== roleId) {
+                return await interaction.reply({
+                    content: '❌ Tombol Join CTF tidak cocok dengan data event.',
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            const member = await interaction.guild.members.fetch(interaction.user.id);
+            const role = await interaction.guild.roles.fetch(roleId);
+
+            if (!role) {
+                return await interaction.reply({
+                    content: '❌ Role CTF tidak ditemukan.',
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            if (member.roles.cache.has(role.id)) {
+                return await interaction.reply({
+                    content: `✅ Kamu sudah join <@&${role.id}>.`,
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            await member.roles.add(role.id);
+            await addParticipant(event.id, interaction.user.id, interaction.user.tag);
+
+            return await interaction.reply({
+                content: `✅ Berhasil join CTF! Role <@&${role.id}> sudah dikasih.`,
+                flags: MessageFlags.Ephemeral
+            });
+        } catch (error) {
+            console.error('[CTF] Error handling join button:', error);
+            return await interaction.reply({
+                content: '❌ Gagal join CTF. Coba lagi bentar lagi ya.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
